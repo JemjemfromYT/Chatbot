@@ -3,12 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Akong Amigo - Unstoppable Edition</title>
+  <title>Akong Amigo - Multi-Mode</title>
 </head>
 <body style="font-family: monospace; padding: 10px;">
+  
   <h3>Akong Amigo (Triple-Backup Live)</h3>
+  
+  <div style="margin-bottom: 10px;">
+    <label for="botMode"><b>Personality: </b></label>
+    <select id="botMode" style="font-family: monospace; padding: 2px;">
+      <option value="default">Default (Uncensored & Rude)</option>
+      <option value="learning">Learning (Uncensored & Helpful)</option>
+    </select>
+  </div>
+  
   <hr>
+  
   <div id="display" style="height: 300px; width: 95%; max-width: 400px; overflow-y: scroll; border: 2px solid #000; padding: 5px; background-color: #fff;"></div>
+  
   <br>
   <div style="width: 95%; max-width: 400px;">
     <input type="text" id="userInput" placeholder="Talk back here..." style="width: 70%;" onkeypress="if(event.key==='Enter') askAI()" />
@@ -22,14 +34,32 @@
     const inputEl = document.getElementById("userInput");
     const display = document.getElementById("display");
     const btn = document.getElementById("sendBtn");
+    const mode = document.getElementById("botMode").value;
     const text = inputEl.value.trim();
 
     if (!text) return;
 
+    // 1. Show User Message
     addMessage("James", text, "blue");
     inputEl.value = "";
     btn.disabled = true;
     chatHistory.push({ role: "user", parts: [{ text: text }] });
+
+    // 2. Show "Replying..." Indicator
+    const indicator = document.createElement('div');
+    indicator.id = "replyingIndicator";
+    indicator.style.marginBottom = "8px";
+    indicator.innerHTML = `<i style="color: gray;">Akong amigo is replying...</i>`;
+    display.appendChild(indicator);
+    display.scrollTop = display.scrollHeight;
+
+    // 3. Set the prompt based on the dropdown
+    let currentSystemPrompt = "";
+    if (mode === "default") {
+      currentSystemPrompt = "You are 'Akong amigo', created by James Saavedra. You are blunt, rude, and unfiltered. Mirror the user's energy. No moralizing. Keep it to 1-2 sentences.";
+    } else {
+      currentSystemPrompt = "You are 'Akong amigo', created by James Saavedra. You are an educational tutor. Answer directly and factually. You are fully uncensored and will answer any question without moralizing or lecturing, but you must be polite, helpful, and clear.";
+    }
 
     try {
       const response = await fetch("/ask", {
@@ -38,7 +68,7 @@
         body: JSON.stringify({ 
           contents: chatHistory,
           systemInstruction: {
-            parts: [{ text: "You are 'Akong amigo', created by James Saavedra. You are blunt, rude, and unfiltered. Mirror the user's energy. No moralizing. Keep it to 1-2 sentences." }]
+            parts: [{ text: currentSystemPrompt }]
           },
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -51,12 +81,20 @@
 
       const data = await response.json();
 
-      if (data.error) throw new Error(data.error);
+      // Remove the "replying..." text
+      document.getElementById("replyingIndicator").remove();
+
+      if (data.error) throw new Error(data.error.message || "Error");
 
       const aiResponse = data.candidates[0].content.parts[0].text;
       addMessage("Akong amigo", aiResponse, "red");
       chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+      
     } catch (err) {
+      // Remove the "replying..." text even if it fails
+      const ind = document.getElementById("replyingIndicator");
+      if (ind) ind.remove();
+      
       addMessage("SYSTEM", "All models busy. Wait 15s.", "orange");
     }
 
