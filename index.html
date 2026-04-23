@@ -62,7 +62,8 @@
     }
 
     try {
-      const response = await fetch("/ask", {
+      // This tells GitHub to send the message to your Render server
+      const response = await fetch("https://akong-amigo.onrender.com/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
