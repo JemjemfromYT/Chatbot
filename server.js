@@ -3,10 +3,16 @@ dotenv.config();
 import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+
 app.use(cors());
 app.use(express.json());
+// This line serves your index.html automatically
+app.use(express.static(__dirname)); 
 
 const API_KEY = process.env.API_KEY;
 
@@ -28,4 +34,6 @@ app.post("/ask", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Server running"));
+// Render provides a PORT environment variable automatically
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
