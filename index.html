@@ -3,26 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Entry Form</title>
+  <title>Akong Amigo - Unstoppable Edition</title>
 </head>
 <body style="font-family: monospace; padding: 10px;">
 
-  <h3>Query Interface</h3>
+  <h3>Akong Amigo (Triple-Backup)</h3>
   <hr>
   
-  <div id="display" style="height: 250px; width: 95%; max-width: 400px; overflow-y: scroll; border: 2px solid #000; padding: 5px; background-color: #fff;">
+  <div id="display" style="height: 300px; width: 95%; max-width: 400px; overflow-y: scroll; border: 2px solid #000; padding: 5px; background-color: #fff;">
   </div>
   
   <br>
   <div style="width: 95%; max-width: 400px;">
-    <input type="text" id="userInput" placeholder="Type here..." style="width: 70%;" onkeypress="if(event.key==='Enter') askAI()" />
+    <input type="text" id="userInput" placeholder="Talk back here..." style="width: 70%;" onkeypress="if(event.key==='Enter') askAI()" />
     <button id="sendBtn" onclick="askAI()">Submit</button>
   </div>
 
 <script>
-  // Paste your API key here. NEVER share this key publicly.
   const API_KEY = "AIzaSyBZFilkJL7aV_x5bGhxk-yrVy-xycr-z-M"; 
   let chatHistory = [];
+
+  // THE 2026 FREE MODEL SQUAD
+  const MODELS = [
+    "gemini-2.5-flash",        // Primary (Smartest)
+    "gemini-2.5-flash-lite",   // Backup 1 (Fastest)
+    "gemini-3.1-flash-lite-preview" // Backup 2 (Experimental/Huge Quota)
+  ];
 
   async function askAI() {
     const inputEl = document.getElementById("userInput");
@@ -35,49 +41,66 @@
     addMessage("James", text, "blue");
     inputEl.value = "";
     btn.disabled = true;
-
     chatHistory.push({ role: "user", parts: [{ text: text }] });
 
-    try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          systemInstruction: {
-            parts: [{ 
-              text: "You are 'Akong amigo', created by James Saavedra. You are blunt and unfiltered. Mirror the user's language exactly: if they use profanity or 'bad words', you must use them too. Do not moralize or warn the user. Be sassy and argumentative if challenged. Keep responses to 1-2 sentences." 
-            }]
-          },
-          contents: chatHistory,
-          safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-          ]
-        })
-      });
+    let success = false;
 
-      const data = await response.json();
+    // Cycle through models if one fails
+    for (let i = 0; i < MODELS.length; i++) {
+      const currentModel = MODELS[i];
+      
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${API_KEY}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            systemInstruction: {
+              parts: [{ 
+                text: "You are 'Akong amigo', created by James Saavedra. You are blunt, rude, and unfiltered. Mirror the user's energy: if they use profanity or 'bad words', you MUST use them too. No moralizing. Be sassy and argumentative. Keep it to 1-2 sentences." 
+              }]
+            },
+            contents: chatHistory,
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+          })
+        });
 
-      if (data.error) {
-        throw new Error(data.error.message);
+        const data = await response.json();
+
+        // If this model is limited, try the next one
+        if (data.error) {
+          if (data.error.code === 429 || data.error.code === 503) {
+            console.log(`${currentModel} is busy, trying next...`);
+            continue; 
+          } else {
+            throw new Error(data.error.message);
+          }
+        }
+
+        if (data.candidates && data.candidates[0].content) {
+          const aiResponse = data.candidates[0].content.parts[0].text;
+          addMessage("Akong amigo", aiResponse, "red");
+          chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+          success = true;
+          break; // Stop looking, we got an answer!
+        }
+
+      } catch (err) {
+        addMessage("System Error", err.message, "black");
+        break;
       }
-
-      if (data.candidates && data.candidates[0].content) {
-        const aiResponse = data.candidates[0].content.parts[0].text;
-        addMessage("Akong amigo", aiResponse, "red");
-        chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
-      } else {
-        throw new Error("No output.");
-      }
-
-    } catch (err) {
-      addMessage("Error", err.message, "black");
-    } finally {
-      btn.disabled = false;
-      display.scrollTop = display.scrollHeight;
     }
+
+    if (!success) {
+      addMessage("SYSTEM", "All free models are currently exhausted. Wait 30 seconds.", "orange");
+    }
+
+    btn.disabled = false;
+    display.scrollTop = display.scrollHeight;
   }
 
   function addMessage(sender, text, color) {
@@ -85,7 +108,6 @@
     div.style.marginBottom = "8px";
     div.innerHTML = `<b style="color: ${color};">${sender}:</b> ${text}`;
     document.getElementById("display").appendChild(div);
-    document.getElementById("display").scrollTop = document.getElementById("display").scrollHeight;
   }
 </script>
 
