@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akong Amigo - Unstoppable Edition</title>
+</head>
+<body style="font-family: monospace; padding: 10px;">
+
+  <h3>Akong Amigo (Triple-Backup)</h3>
+  <hr>
+  
+  <div id="display" style="height: 300px; width: 95%; max-width: 400px; overflow-y: scroll; border: 2px solid #000; padding: 5px; background-color: #fff;">
+  </div>
+  
+  <br>
+  <div style="width: 95%; max-width: 400px;">
+    <input type="text" id="userInput" placeholder="Talk back here..." style="width: 70%;" onkeypress="if(event.key==='Enter') askAI()" />
+    <button id="sendBtn" onclick="askAI()">Submit</button>
+  </div>
+
+<script>
+  const API_KEY = process.env.API_KEY; 
+  let chatHistory = [];
+
+  // THE 2026 FREE MODEL SQUAD
+  const MODELS = [
+    "gemini-2.5-flash",        // Primary (Smartest)
+    "gemini-2.5-flash-lite",   // Backup 1 (Fastest)
+    "gemini-3.1-flash-lite-preview" // Backup 2 (Experimental/Huge Quota)
+  ];
+
+  async function askAI() {
+    const inputEl = document.getElementById("userInput");
+    const display = document.getElementById("display");
+    const btn = document.getElementById("sendBtn");
+    const text = inputEl.value.trim();
+
+    if (!text) return;
+
+    addMessage("James", text, "blue");
+    inputEl.value = "";
+    btn.disabled = true;
+    chatHistory.push({ role: "user", parts: [{ text: text }] });
+
+    try {
+        // We call our own backend endpoint "/ask" instead of Google
+        const response = await fetch("/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                contents: chatHistory,
+                systemInstruction: {
+                    parts: [{ text: "You are 'Akong amigo'... (keep your prompt here)" }]
+                }
+            })
+        });
+
+        const data = await response.json();
+        const aiResponse = data.candidates[0].content.parts[0].text;
+        
+        addMessage("Akong amigo", aiResponse, "red");
+        chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+    } catch (err) {
+        addMessage("System Error", "The server is sleeping or broken.", "black");
+    }
+
+    btn.disabled = false;
+    display.scrollTop = display.scrollHeight;
+}
+  function addMessage(sender, text, color) {
+    const div = document.createElement('div');
+    div.style.marginBottom = "8px";
+    div.innerHTML = `<b style="color: ${color};">${sender}:</b> ${text}`;
+    document.getElementById("display").appendChild(div);
+  }
+</script>
+
+</body>
+</html>
