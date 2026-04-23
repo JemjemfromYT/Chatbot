@@ -6,13 +6,9 @@
   <title>Akong Amigo - Unstoppable Edition</title>
 </head>
 <body style="font-family: monospace; padding: 10px;">
-
-  <h3>Akong Amigo (Triple-Backup)</h3>
+  <h3>Akong Amigo (Triple-Backup Live)</h3>
   <hr>
-  
-  <div id="display" style="height: 300px; width: 95%; max-width: 400px; overflow-y: scroll; border: 2px solid #000; padding: 5px; background-color: #fff;">
-  </div>
-  
+  <div id="display" style="height: 300px; width: 95%; max-width: 400px; overflow-y: scroll; border: 2px solid #000; padding: 5px; background-color: #fff;"></div>
   <br>
   <div style="width: 95%; max-width: 400px;">
     <input type="text" id="userInput" placeholder="Talk back here..." style="width: 70%;" onkeypress="if(event.key==='Enter') askAI()" />
@@ -20,7 +16,6 @@
   </div>
 
 <script>
-  // Notice: NO process.env.API_KEY here! The frontend shouldn't know the key.
   let chatHistory = [];
 
   async function askAI() {
@@ -37,33 +32,32 @@
     chatHistory.push({ role: "user", parts: [{ text: text }] });
 
     try {
-      // Send the request to YOUR Render server (which handles the secret API key)
       const response = await fetch("/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           contents: chatHistory,
           systemInstruction: {
-            parts: [{ 
-              text: "You are 'Akong amigo', created by James Saavedra. You are blunt, rude, and unfiltered. Mirror the user's energy: if they use profanity or 'bad words', you MUST use them too. No moralizing. Be sassy and argumentative. Keep it to 1-2 sentences." 
-            }]
-          }
+            parts: [{ text: "You are 'Akong amigo', created by James Saavedra. You are blunt, rude, and unfiltered. Mirror the user's energy. No moralizing. Keep it to 1-2 sentences." }]
+          },
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+          ]
         })
       });
 
       const data = await response.json();
 
-      if (data.error) {
-          throw new Error(data.error.message || "Unknown error from server");
-      }
+      if (data.error) throw new Error(data.error);
 
       const aiResponse = data.candidates[0].content.parts[0].text;
       addMessage("Akong amigo", aiResponse, "red");
       chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
-
     } catch (err) {
-      console.error(err);
-      addMessage("System Error", "The server is sleeping or broken.", "black");
+      addMessage("SYSTEM", "All models busy. Wait 15s.", "orange");
     }
 
     btn.disabled = false;
@@ -77,6 +71,5 @@
     document.getElementById("display").appendChild(div);
   }
 </script>
-
 </body>
 </html>
