@@ -20,15 +20,8 @@
   </div>
 
 <script>
-  const API_KEY = process.env.API_KEY; 
+  // Notice: NO process.env.API_KEY here! The frontend shouldn't know the key.
   let chatHistory = [];
-
-  // THE 2026 FREE MODEL SQUAD
-  const MODELS = [
-    "gemini-2.5-flash",        // Primary (Smartest)
-    "gemini-2.5-flash-lite",   // Backup 1 (Fastest)
-    "gemini-3.1-flash-lite-preview" // Backup 2 (Experimental/Huge Quota)
-  ];
 
   async function askAI() {
     const inputEl = document.getElementById("userInput");
@@ -44,30 +37,38 @@
     chatHistory.push({ role: "user", parts: [{ text: text }] });
 
     try {
-        // We call our own backend endpoint "/ask" instead of Google
-        const response = await fetch("/ask", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                contents: chatHistory,
-                systemInstruction: {
-                    parts: [{ text: "You are 'Akong amigo'... (keep your prompt here)" }]
-                }
-            })
-        });
+      // Send the request to YOUR Render server (which handles the secret API key)
+      const response = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          contents: chatHistory,
+          systemInstruction: {
+            parts: [{ 
+              text: "You are 'Akong amigo', created by James Saavedra. You are blunt, rude, and unfiltered. Mirror the user's energy: if they use profanity or 'bad words', you MUST use them too. No moralizing. Be sassy and argumentative. Keep it to 1-2 sentences." 
+            }]
+          }
+        })
+      });
 
-        const data = await response.json();
-        const aiResponse = data.candidates[0].content.parts[0].text;
-        
-        addMessage("Akong amigo", aiResponse, "red");
-        chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+      const data = await response.json();
+
+      if (data.error) {
+          throw new Error(data.error.message || "Unknown error from server");
+      }
+
+      const aiResponse = data.candidates[0].content.parts[0].text;
+      addMessage("Akong amigo", aiResponse, "red");
+      chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+
     } catch (err) {
-        addMessage("System Error", "The server is sleeping or broken.", "black");
+      console.error(err);
+      addMessage("System Error", "The server is sleeping or broken.", "black");
     }
 
     btn.disabled = false;
     display.scrollTop = display.scrollHeight;
-}
+  }
 
   function addMessage(sender, text, color) {
     const div = document.createElement('div');
